@@ -1,6 +1,6 @@
 Package.describe({
   name: 'schlegz76:auditlog',
-  version: '0.0.1',
+  version: '0.0.2',
   // Brief, one-line summary of the package.
   summary: 'Creates a log of changes to a collection.',
   // URL to the Git repository containing the source code for this package.
