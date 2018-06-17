@@ -7,22 +7,6 @@ const AuditLogs = new Mongo.Collection('auditlog');
 
 AuditLogs.schema = AuditLogSchema;
 
-if (Meteor.isServer) {
-  AuditLogs.rawCollection().createIndex({ userId: 1 }); // index, ascending
-  AuditLogs.rawCollection().createIndex({ docId: 1 }); // index, ascending
-}
-
-/**
- * Generate a object detailing the difference between two documents.
- * @param {Object} doc1 LHS document to compare.
- * @param {Object} doc2 RHS document to compare.
- * @param {Object} options Additional comparison options.
- */
-function getDocDelta(doc1, doc2, options) {
-  const delta = diff(doc1, doc2);
-  return delta;
-}
-
 /**
  * Add a log entry when a document is added to a collection.
  *
@@ -37,6 +21,7 @@ function logInsert(userId, doc, collectionName, logOptions) {
     collection: collectionName,
     docId: doc._id,
     action: 'insert',
+    createdAt: new Date(),
   });
 }
 
@@ -54,6 +39,7 @@ function logRemove(userId, doc, collectionName, logOptions) {
     collection: collectionName,
     docId: doc._id,
     action: 'remove',
+    createdAt: new Date(),
   });
 }
 
@@ -73,41 +59,60 @@ function logUpdate(
   fieldNames, modifier, options,
   previousDoc,
 ) {
-  const delta = getDocDelta(previousDoc, doc);
+  const delta = diff(previousDoc, doc, (path, key) => logOptions.omit.includes(key));
 
   AuditLogs.insert({
     userId,
     collection: collectionName,
     docId: doc._id,
     action: 'update',
+    createdAt: new Date(),
     delta,
   });
 }
 
-/**
- * Attach event handler to the collection to log add/remove/update
- * modifications to documents.
- * @param {*} collection Collection to monitor.
- * @param {*} logOptions Additional logging options.
- */
-AuditLogs.addLogger = function (collection, logOptions) {
-  const collectionName = collection._name || 'unknown';
+if (Meteor.isServer) {
+  AuditLogs.rawCollection().createIndex({ userId: 1 }); // index, ascending
+  AuditLogs.rawCollection().createIndex({ docId: 1 }); // index, ascending
 
-  collection.after.insert((userId, doc) => {
-    logInsert(userId, doc, collectionName, logOptions);
+  Meteor.publish('auditlogs.all', function () {
+    // if not logged in, indicate that we are done and have sent everything
+    if (!this.userId) {
+      return this.ready();
+    }
+
+    return AuditLogs.find({}, { sort: { createdAt: 1 } });
   });
 
-  collection.after.remove((userId, doc) => {
-    logRemove(userId, doc, collectionName, logOptions);
-  });
+  /**
+   * Attach event handler to the collection to log add/remove/update
+   * modifications to documents.
+   * @param {*} collection Collection to monitor.
+   * @param {*} logOptions Additional logging options.
+   */
+  AuditLogs.addLogger = function (collection, logOptions) {
+    const collectionName = collection._name || 'unknown';
 
-  collection.after.update(function (userId, doc, fieldNames, modifier, options) {
-    logUpdate(
-      userId, doc, collectionName, logOptions,
-      fieldNames, modifier, options,
-      this.previous,
-    );
-  });
-};
+    collection.after.insert((userId, doc) => {
+      logInsert(userId, doc, collectionName, logOptions);
+    });
+
+    collection.after.remove((userId, doc) => {
+      logRemove(userId, doc, collectionName, logOptions);
+    });
+
+    collection.after.update(function (userId, doc, fieldNames, modifier, options) {
+      logUpdate(
+        userId, doc, collectionName, logOptions,
+        fieldNames, modifier, options,
+        this.previous,
+      );
+    });
+  };
+} else {
+  AuditLogs.subscribeAll = function () {
+    return Meteor.subscribe('auditlogs.all');
+  };
+}
 
 export default AuditLogs;

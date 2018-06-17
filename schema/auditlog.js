@@ -14,6 +14,9 @@ export default new SimpleSchema({
   docId: {
     type: String,
   },
+  createdAt: {
+    type: Date,
+  },
   action: {
     type: String,
     allowedValues: [
