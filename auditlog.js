@@ -81,7 +81,7 @@ if (Meteor.isServer) {
       return this.ready();
     }
 
-    return AuditLogs.find({}, { sort: { createdAt: 1 } });
+    return AuditLogs.find({}, { sort: { createdAt: -1 } });
   });
 
   /**
