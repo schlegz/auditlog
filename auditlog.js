@@ -113,8 +113,8 @@ if (Meteor.isServer) {
   Meteor.methods({
     'auditlogs.count'({ search }) {
       if (!this.isSimulation) {
-        let query = {};
-        const regex = new RegExp(search, 'i');
+        // let query = {};
+        // const regex = new RegExp(search, 'i');
 
         // query = {
         //   $or: [
@@ -126,8 +126,8 @@ if (Meteor.isServer) {
       }
 
       return 0;
-  }
-});
+    },
+  });
 
   /**
    * Attach event handler to the collection to log add/remove/update
