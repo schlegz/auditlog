@@ -113,7 +113,7 @@ if (Meteor.isServer) {
   Meteor.methods({
     'auditlogs.count'({ search }) {
       if (!this.isSimulation) {
-        // let query = {};
+        const query = {};
         // const regex = new RegExp(search, 'i');
 
         // query = {
